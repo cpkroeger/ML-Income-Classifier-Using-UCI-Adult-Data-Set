@@ -1,0 +1,445 @@
+##################################################
+# ECON 418-518 Homework 3
+# Caitlyn Kroeger
+# The University of Arizona
+# cpkroeger@arizona.edu 
+# 8 December 2024
+###################################################
+
+
+#####################
+# Preliminaries
+#####################
+
+# Clear environment, console, and plot pane
+
+rm(list = ls())
+cat("\014")
+graphics.off()
+
+# Turn off scientific notation
+
+options(scipen = 999)
+
+# Load packages
+
+pacman::p_load(data.table)
+install.packages("readr")
+library(readr)
+dt<- fread("data.csv")
+dt<- as.data.table(data)
+
+# Set sead
+
+set.seed(418518)
+
+
+#####################
+# Problem 1
+#####################
+
+#################
+# Question (i)
+#################
+
+# cleaned columns “fnlwgt”, “occupation”, “relationship”, “capital-gain”, “capitalloss”, and “educational-num”#
+
+data <- read.csv("data.csv")
+data_cleaned <- data[, !(names(data) %in% c("fnlwgt", "occupation", "relationship", "capital-gain", "capitalloss", "educational-num"))]
+
+#################
+# Question (ii)
+#################
+
+##############
+# Part (a)
+##############
+
+# Create a binary income column: 1 for >50K, 0 for others
+
+data$income_binary <- ifelse(data$income == ">50K", 1, 0)
+
+##############
+# Part (b)
+##############
+
+# Create a binary race column: 1 for White, 0 for others
+
+data$race_binary <- ifelse(data$race == "White", 1, 0)
+
+##############
+# Part (c)
+##############
+
+# Create a binary gender column: 1 for Male, 0 for others
+
+data$gender_binary <- ifelse(data$gender == "Male", 1, 0)
+
+##############
+# Part (d)
+##############
+
+# Create a binary workclass column: 1 for Private, 0 for others
+
+data$workclass_binary <- ifelse(data$workclass == "Private", 1, 0)
+
+##############
+# Part (e)
+##############
+
+# Create the binary column: 1 for United-States, 0 otherwise
+
+data$native_country_binary <- ifelse(data$`native country` == "United-States", 1, 0)
+
+##############
+# Part (f)
+##############
+
+# Convert "marital_status" column to binary indicator
+
+data$marital_status <- ifelse(data$marital_status == "Married-civ-spouse", 1, 0)
+
+##############
+# Part (g)
+##############
+
+# Create a binary education column: 1 for Bachelors, Masters, or Doctorate, 0 for others
+
+data$education_binary <- ifelse(data$education %in% c("Bachelors", "Masters", "Doctorate"), 1, 0)
+
+##############
+# Part (h)
+##############
+
+# Create the age_sq variable: square of the age
+
+data$age_sq <- data$age^2
+
+##############
+# Part (i)
+##############
+
+# Standardize the age, age_sq, and hours per week columns
+
+data$age_standardized <- scale(data$age)
+data$age_sq_standardized <- scale(data$age_sq)
+data$hours_per_week_standardized <- scale(data$`hours-per-week`)
+
+# View the first few rows of the cleaned data
+
+head(data)
+
+#################
+# Question (ii)
+#################
+
+##############
+# Part (a)
+##############
+
+# the proportion of individuals with income > 50K
+
+proportion_income_gt_50k <- mean(data$income_binary)
+proportion_income_gt_50k
+
+##############
+# Part (b)
+##############
+
+# the proportion of individuals in the private sector
+
+proportion_private_sector <- mean(data$workclass_binary)
+proportion_private_sector
+
+##############
+# Part (c)
+##############
+
+# the proportion of married individuals
+
+proportion_married <- mean(data$marital-status-binary)
+proportion_married
+
+##############
+# Part (d)
+##############
+
+# the proportion of females 
+
+proportion_females <- mean(data$gender_binary == 0)
+proportion_females
+
+##############
+# Part (e)
+##############
+
+# the total number of NA values in the dataset
+
+data[data == "?"] <- NA
+total_NAs <- sum(is.na(data))
+total_NAs
+
+###############
+# Part (f)
+##############
+
+# Convert the 'income' variable to a factor
+
+data$income <- factor(data$income)
+str(data$income)
+print(summary(data$income))
+
+#################
+# Question (iv)
+#################
+
+##############
+# Part (a)
+##############
+
+# Find the last observation index for the training set
+
+last_training_obs <- floor(nrow(data) * 0.70)
+last_training_obs
+
+##############
+# Part (b)
+##############
+
+# Create the training data table (first row until the last training set observation)
+
+training_data <- data[1:last_training_obs, ]
+str(training_data)
+
+##############
+# Part (c)
+##############
+
+# Create the testing data table (observation after last training set observation to the end)
+
+testing_data <- data[(last_training_obs + 1):nrow(data), ]
+str(testing_data)
+
+###################
+# Part V #
+###################
+
+##############
+# Part (b)
+##############
+
+# Install/ load packages
+install.packages("caret")
+install.packages("glmnet")
+library(caret)
+library(glmnet)
+
+# Define the lambda grid
+
+lambda_grid <- 10^seq(5, -2, length = 50)
+
+# Set up the training control for 10-fold cross-validation
+
+train_control <- trainControl(method = "cv", number = 10)
+
+# Ensure that the target variable is a factor for classification problems
+
+y_train <- as.factor(y_train)  
+
+# Train the Lasso model using caret's train() function
+
+lasso_model <- train(
+  x = x_train,  
+  y = y_train,  
+  method = "glmnet",
+  tuneGrid = expand.grid(alpha = 1, lambda = lambda_grid),
+  trControl = train_control  
+)
+
+# Check the results of the trained model
+print(lasso_model)
+
+##############
+# Part (c)
+##############
+
+# Best value of lambda and classification accuracy
+
+best_lambda <- lasso_model$bestTune$lambda
+classification_accuracy <- max(lasso_model$results$Accuracy)
+
+cat("Best lambda for Lasso:", best_lambda, "\n")
+cat("Classification accuracy for Lasso:", classification_accuracy, "\n")
+
+
+##############
+# Part (d)
+##############
+
+# Variables with coefficients approximately zero
+
+lasso_coefficients <- coef(lasso_model$finalModel, s = lasso_model$bestTune$lambda)
+zero_coeff_vars <- rownames(lasso_coefficients)[abs(as.vector(lasso_coefficients)) < 1e-4]
+
+cat("Variables with zero coefficients in Lasso:", zero_coeff_vars, "\n")
+
+# Estimate Lasso and Ridge regression models with only non-zero coefficient variables
+
+# Filter out non-zero variables from training data
+
+non_zero_vars <- setdiff(colnames(train_dt), zero_coeff_vars)
+filtered_training_data <- training_data[, c(non_zero_vars, "income")]
+
+# Lasso Model with non-zero variables
+
+set.seed(418518)
+lasso_refined <- train(
+  income ~ ., 
+  data = filtered_training_data, 
+  method = "glmnet",
+  trControl = trainControl(method = "cv", number = 10),
+  tuneGrid = expand.grid(alpha = 1, lambda = lambda_grid)
+)
+
+# Ridge Model with non-zero variables
+
+set.seed(418518)
+ridge_refined <- train(
+  income ~ ., 
+  data = filtered_training_data, 
+  method = "glmnet",
+  trControl = trainControl(method = "cv", number = 10),
+  tuneGrid = expand.grid(alpha = 0, lambda = lambda_grid)
+)
+
+# Compare Classification Accuracies
+
+lasso_accuracy <- max(lasso_refined$results$Accuracy)
+ridge_accuracy <- max(ridge_refined$results$Accuracy)
+
+cat("Lasso Classification Accuracy:", lasso_accuracy, "\n")
+cat("Ridge Classification Accuracy:", ridge_accuracy, "\n")
+
+
+###################
+# Part V #
+###################
+
+install.packages("randomForest")
+
+##############
+# Part (b)
+##############
+
+cat("Starting Random Forest Model Evaluation...\n")
+
+# Define the grid for tuning mtry (number of features to try at each split)
+
+tree_grid <- expand.grid(mtry = c(2, 5, 9))  # Adjust as needed based on features
+
+# Train Random Forest models with 5-fold cross-validation and different number of trees
+
+rf_model_100 <- train(
+  income ~ ., 
+  data = train_dt, 
+  method = "rf", 
+  trControl = trainControl(method = "cv", number = 5, verboseIter = TRUE), 
+  tuneGrid = tree_grid, 
+  ntree = 100  # 100 trees
+)
+
+rf_model_200 <- train(
+  income ~ ., 
+  data = train_dt, 
+  method = "rf", 
+  trControl = trainControl(method = "cv", number = 5, verboseIter = TRUE), 
+  tuneGrid = tree_grid, 
+  ntree = 200  # 200 trees
+)
+
+rf_model_300 <- train(
+  income ~ ., 
+  data = train_dt, 
+  method = "rf", 
+  trControl = trainControl(method = "cv", number = 5, verboseIter = TRUE), 
+  tuneGrid = tree_grid, 
+  ntree = 300  # 300 trees
+)
+cat("Random Forest Models Complete!\n")
+
+##############
+# Part (c)
+##############
+
+cat("Evaluating Model Accuracy...\n")
+
+# Print the results to compare the models' accuracy
+
+cat("Model 100 trees:", rf_model_100$results$Accuracy, "\n")
+cat("Model 200 trees:", rf_model_200$results$Accuracy, "\n")
+cat("Model 300 trees:", rf_model_300$results$Accuracy, "\n")
+
+# Find the best model based on accuracy
+
+best_rf_model <- max(rf_model_100$results$Accuracy, rf_model_200$results$Accuracy, rf_model_300$results$Accuracy)
+cat("Best Model Accuracy:", best_rf_model, "\n")
+
+
+##############
+# Part (d)
+##############
+
+cat("Comparing Best Models...\n")
+
+# Assuming you have the best Random Forest model accuracy from Part (vi) saved
+
+best_rf_model <- 0.8570592  
+
+# Assuming 'cv' is your lasso/ridge model training object, extract the best accuracy:
+
+best_lasso_ridge_accuracy <- max(cv$results$Accuracy)  
+
+# Print comparison
+
+cat("Best Random Forest Model Accuracy:", best_rf_model, "\n")
+cat("Best Lasso/Ridge Model Accuracy from Part (v):", best_lasso_ridge_accuracy, "\n")
+
+##############
+# Part (e)
+##############
+
+cat("Generating Confusion Matrix...\n")
+
+# Make predictions using the best random forest model 
+
+predictions_rf <- predict(rf_model_100, training_data)
+
+# Generate the confusion matrix
+
+cm_rf <- confusionMatrix(predictions_rf, training_data$income)
+
+# Print confusion matrix
+
+print(cm_rf)
+
+# Check false positives and false negatives
+
+cat("False Positives:", cm_rf$table[2,1], "\n")
+cat("False Negatives:", cm_rf$table[1,2], "\n")
+
+
+##############
+# Question (vii)
+##############
+
+cat("Evaluating Best Model on Testing Data...\n")
+
+# Make predictions using the best random forest model (example: rf_model_100)
+
+predictions_rf_test <- predict(rf_model_100, testing_data)
+
+# Evaluate the classification accuracy on the testing set
+
+test_accuracy_rf <- mean(predictions_rf_test == testing_data$income)
+cat("Classification Accuracy on Testing Set:", test_accuracy_rf, "\n")
+
